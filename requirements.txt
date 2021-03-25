@@ -1,0 +1,5 @@
+docopt
+sklearn
+pygments
+optuna
+# tensorflow or tensorflow-gpu
