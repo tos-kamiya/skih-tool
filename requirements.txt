@@ -1,5 +1,5 @@
 docopt
 sklearn
 pygments
-optuna
+# optuna   # not used in applying model.
 # tensorflow or tensorflow-gpu
