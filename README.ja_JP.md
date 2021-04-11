@@ -34,6 +34,45 @@ python3 apply_model.py -l python -p 0.7 main.py 2> /dev/null
 python3 apply_model.py -l java -p 0.7 Main.java 2> /dev/null
 ```
 
+出力は、引数として与えた対象ソースファイルの各行に対して、文末コメントがあると予測した行の行頭に「*」をつけたものとなります。
+
+```sh
+$ python3 apply_model.py -l java -p 0.5 samples/MonthCalendar.java 2> /dev/null
+- samples/MonthCalendar.java
+  import java.time.LocalDate;
+  
+  public class MonthCalendar {
+      public static void main(String[] args) {
+          System.out.println("Su Mo Tu We Th Fr Sa");
+  
+          LocalDate date = LocalDate.now();
+          LocalDate firstDayOfMonth = LocalDate.of(date.getYear(), date.getMonthValue(), 1);
+          int dayOfWeek = firstDayOfMonth.getDayOfWeek().getValue();
+          int monthDays = date.lengthOfMonth();
+  
+*         int d = 1;
+          if (dayOfWeek != 1) {
+              d -= dayOfWeek - 1;
+*             dayOfWeek = 1;
+          }
+          for (; d <= monthDays; d++) {
+              if (d >= 1) {
+                  System.out.printf("%2d ", d);
+              } else {
+                  System.out.printf("   ");
+              }
+              if (dayOfWeek == 7) {
+                  System.out.println();
+              }
+*             dayOfWeek = dayOfWeek % 7 + 1;
+          }
+          if (dayOfWeek != 1) {
+              System.out.println();
+          }
+      }
+  }
+```
+
 ## 設計、アルゴリズムなど
 
 次を参照してください。
