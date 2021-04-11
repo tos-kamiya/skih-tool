@@ -1,3 +1,4 @@
+import os
 import sys
 import pickle
 from itertools import zip_longest
@@ -12,6 +13,9 @@ from gen_tokenseqs_langspecific import LANG_SPEC_TABLE
 
 from train_model import SENTENCE_SEPS, split_to_tseqwon_and_liseq, to_tseq
 from train_model import identifier_split_java, identifier_split_default
+
+
+script_dir = os.path.dirname(os.path.realpath(__file__))
 
 
 def code_wo_comments(code, lexer):
@@ -141,7 +145,7 @@ Option:
 def main():
     args = docopt.docopt(__doc__)
     language = args['--language']
-    input_model = args['-m'] or language  # the default is the same as the language name
+    input_model = args['-m']
     source_files = args['<sourcefile>']
     threshold = float(args['-p']) if args['-p'] else None
     top_n = int(args['-t']) if args['-t'] else None
@@ -150,7 +154,10 @@ def main():
     show_probability = args['--show-probability']
     remove_original_comments = args['--remove-original-comments']
     predict_wo_comment_tokens = args['--predict-wo-comment-tokens']
-    
+
+    if not input_model:
+        input_model = os.path.join(script_dir, language)
+
     langspec = LANG_SPEC_TABLE.get(language, None)
     if langspec is None:
         sys.exit("Error: no language specific settings found for language: %s" % language)
