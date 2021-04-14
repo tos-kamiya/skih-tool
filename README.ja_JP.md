@@ -77,7 +77,7 @@ $ python3 apply_model.py -l java -p 0.5 samples/MonthCalendar.java 2> /dev/null
 
 ```sh
 python3 /apply_model.py -p 0.7 -l python samples/month_calendar.py 2> /dev/null
-- samples/month_calendar.py
+- month_calendar.py
   import calendar
   import datetime
   
@@ -85,13 +85,13 @@ python3 /apply_model.py -p 0.7 -l python samples/month_calendar.py 2> /dev/null
   def main():
       print("Su Mo Tu We Th Fr Sa")
   
-*     date = datetime.date.today()
+      date = datetime.date.today()
 *     first_day_of_month = date.replace(day=1)
 *     day_of_week = (first_day_of_month.weekday() + 1) % 7  # 0 -> Sunday, 1 -> Monday, ...
-*     month_days = calendar.monthrange(date.year, date.month)[1]
+      month_days = calendar.monthrange(date.year, date.month)[1]
   
-*     d = 1
-*     if day_of_week != 0:
+      d = 1
+      if day_of_week != 0:
           d -= day_of_week
 *         day_of_week = 0
       for d in range(d, month_days + 1):
@@ -99,10 +99,10 @@ python3 /apply_model.py -p 0.7 -l python samples/month_calendar.py 2> /dev/null
               print("%2d " % d, end="")
           else:
               print("   ", end="")
-*         if day_of_week == 6:
+          if day_of_week == 6:
 *             print()
 *         day_of_week = (day_of_week + 1) % 7
-*     if day_of_week != 0:
+      if day_of_week != 0:
 *         print()
   
   
