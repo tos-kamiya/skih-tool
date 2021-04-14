@@ -76,7 +76,7 @@ $ python3 apply_model.py -l java -p 0.5 samples/MonthCalendar.java 2> /dev/null
 Another example:
 
 ```sh
-python3 /apply_model.py -p 0.7 -l python samples/month_calendar.py 2> /dev/null
+$ python3 apply_model.py -p 0.7 -l python samples/month_calendar.py 2> /dev/null
 - samples/month_calendar.py
   import calendar
   import datetime
