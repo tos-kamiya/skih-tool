@@ -9,10 +9,9 @@ from pygments.token import Token
 import numpy as np
 
 from gen_tokenseqs import read_lines_safe, scan_tokens, normalize_token_seq
-from gen_tokenseqs_langspecific import LANG_SPEC_TABLE
-
-from train_model import SENTENCE_SEPS, split_to_tseqwon_and_liseq, to_tseq
-from train_model import identifier_split_java, identifier_split_default
+from gen_fragment import IDENTIFIER_PREFIX, OOV_TOKEN, SENTENCE_SEPS
+from gen_fragment import identifier_split_java, identifier_split_python, identifier_split_default
+from gen_fragment import to_tseq, split_to_tseqwon_and_liseq
 
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -79,7 +78,7 @@ def calc_line_comment_probability(iseq, idx, model, seq_length, no_count_token_s
     return predict
 
 
-def calc_probability_java(tokens, tokenizer, model, seq_length, predict_wo_comment_tokens=False):
+def calc_probability(tokens, tokenizer, model, seq_length, predict_wo_comment_tokens=False):
     tseq = to_tseq(normalize_token_seq(tokens), identifier_split_java)
 
     tseqwon, liseq = split_to_tseqwon_and_liseq(tseq)
@@ -97,31 +96,6 @@ def calc_probability_java(tokens, tokenizer, model, seq_length, predict_wo_comme
         assert tseqwon[i] in SENTENCE_SEPS
         li2p[liseq[i]] = calc_line_comment_probability(iseq, i, model, seq_length,
                 no_count_token_set=no_count_token_set)
-
-    return li2p
-
-
-def calc_probability_default(tokens, tokenizer, model, seq_length, predict_wo_comment_tokens=False):
-    tseq = to_tseq(normalize_token_seq(tokens), identifier_split_default)
-
-    tseqwon, liseq = split_to_tseqwon_and_liseq(tseq)
-    if len(tseqwon) == 0:
-        return dict()
-    
-    sentence_sep_poss = [i for i in range(len(liseq) - 1) if liseq[i] != liseq[i + 1]]
-    iseq = tokenizer.texts_to_sequences([tseqwon])[0]
-    assert len(iseq) == len(tseqwon)
-    if predict_wo_comment_tokens:
-        comment_token_i = tokenizer.texts_to_sequences([['$C']])[0][0]
-        no_count_token_set = frozenset([comment_token_i])
-    else:
-        no_count_token_set = frozenset([])
-
-    li2p = dict()
-    for i in sentence_sep_poss:
-        if i + 1 < len(liseq) and liseq[i] != liseq[i + 1]:
-            li2p[liseq[i]] = calc_line_comment_probability(iseq, i, model, seq_length,
-                    no_count_token_set=no_count_token_set)
 
     return li2p
 
@@ -154,18 +128,17 @@ def main():
     show_probability = args['--show-probability']
     remove_original_comments = args['--remove-original-comments']
     predict_wo_comment_tokens = args['--predict-wo-comment-tokens']
-
+    
     if not input_model:
         input_model = os.path.join(script_dir, language)
 
-    langspec = LANG_SPEC_TABLE.get(language, None)
-    if langspec is None:
+    lexer = get_lexer_by_name(language)
+    if lexer is None:
         sys.exit("Error: no language specific settings found for language: %s" % language)
-    lexer = get_lexer_by_name(langspec.lexer_name)
 
     from tensorflow.python.keras.preprocessing.sequence import pad_sequences
     _pad_sequences_func[0] = pad_sequences
-    from train_model import build_nn
+    from build_nn import build_nn
 
     with open(input_model + ".pickle", 'rb') as inp:
         model_params = pickle.load(inp)
@@ -181,12 +154,8 @@ def main():
         code = '\n'.join(lines)
         tokens = scan_tokens(fname, code, lexer)
 
-        if language == 'java':
-            li2p = calc_probability_java(tokens, tokenizer, model, seq_length, 
-                    predict_wo_comment_tokens=predict_wo_comment_tokens)
-        else:
-            li2p = calc_probability_default(tokens, tokenizer, model, seq_length, 
-                    predict_wo_comment_tokens=predict_wo_comment_tokens)
+        li2p = calc_probability(tokens, tokenizer, model, seq_length, 
+                predict_wo_comment_tokens=predict_wo_comment_tokens)
 
         if top_n is not None:
             if len(li2p) > top_n:

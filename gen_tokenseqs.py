@@ -7,8 +7,6 @@ from pygments.lexers import get_lexer_by_name
 from pygments.token import Token
 import docopt
 
-from gen_tokenseqs_langspecific import LANG_SPEC_TABLE
-
 
 def read_lines_safe(filename):
     with open(filename, encoding='utf-8', errors='replace') as inp:
@@ -19,12 +17,45 @@ def read_lines_safe(filename):
         return lines
 
 
+PSEUDO_SENTENCE_SEP = '$P:;'
+PSEUDO_DEDENT = '$}'
+
+
 def scan_tokens(filename, code, lexer):
     _ = filename
     prev_idx = 0
+    prev_tt_ts = None, None
     tokens = []
+    if lexer.name == 'Python':
+        code = re.sub('\n[ \t]+\n', '\n\n', code)
     token_it = lexer.get_tokens_unprocessed(code)
+    cur_indent = ''
     for idx, tt, ts in token_it:
+        if lexer.name == 'Python':
+            is_empty_line = False
+            if prev_tt_ts[0] in Token.Text and prev_tt_ts[1] == '\n':
+                if tt in Token.Text and ts == '\n':
+                    pass  # empty lines can not change depth of indentation
+                else:
+                    if tt in Token.Text and re.match('[ \t]+', ts):
+                        indent = ts
+                    else:
+                        indent = ''
+                    if len(indent) < len(cur_indent):
+                        tokens.append(PSEUDO_DEDENT)
+                    cur_indent = indent
+            if tt in Token.Text and ts == '\n':
+                line_has_statement = False
+                for t in tokens[::-1]:
+                    if t == '\n':
+                        break  # for t
+                    if t not in ['$C', '$S', PSEUDO_SENTENCE_SEP]:
+                        line_has_statement = True
+                if line_has_statement:
+                    if tokens[-1] == '$C':
+                        tokens.insert(len(tokens) - 1, PSEUDO_SENTENCE_SEP)
+                    else:
+                        tokens.append(PSEUDO_SENTENCE_SEP)
         tokens.extend(['\n'] * code[prev_idx:idx].count('\n'))
         if tt in Token.Literal.String:
             if tokens and tokens[-1] != "$S":
@@ -36,16 +67,17 @@ def scan_tokens(filename, code, lexer):
         elif tt in Token.Comment:
             tokens.append("$C")
         else:
-            ts = re.sub(r'[\r\n\t]', '', ts).strip()  # remove space chars (if they were) in token (a buggy behavior of lexer)
+            tts = re.sub(r'[\r\n\t]', '', ts).strip()  # remove space chars (if they were) in token (a buggy behavior of lexer)
             if tt in Token.Keyword:
-                tokens.append("$K:" + ts)
+                tokens.append("$K:" + tts)
             elif tt in Token.Name:
-                tokens.append("$I:" + ts)  # identifier
+                tokens.append("$I:" + tts)  # identifier
             elif tt in Token.Operator:
-                tokens.append("$O:" + ts)
+                tokens.append("$O:" + tts)
             elif tt in Token.Punctuation:
-                tokens.append("$P:" + ts)
+                tokens.append("$P:" + tts)
         prev_idx = idx
+        prev_tt_ts = tt, ts
     else:
         tokens.extend(['\n'] * code[prev_idx:].count('\n'))
     return tokens
@@ -118,10 +150,9 @@ def main():
         if output_pattern.find('%b') < 0:
             sys.exit("error: pattern of output file not including '%b': %s" % repr(output_pattern))
 
-    langspec = LANG_SPEC_TABLE.get(language, None)
-    if langspec is None:
+    lexer = get_lexer_by_name(language)
+    if lexer is None:
         sys.exit("Error: no language specific settings found for language: %s" % language)
-    lexer = get_lexer_by_name(langspec.lexer_name)
 
     if target_dir:
         target_file_it = traverse_dir_iter(target_dir, lexer.filenames)
